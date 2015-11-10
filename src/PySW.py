@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import FV_plot_tools as Plot_tools
 import FV_Diagnose as Diagnose
+from scipy.fftpack import fftn, ifftn, fftfreq
 import os
 import shutil
 
@@ -17,10 +18,21 @@ class Simulation:
     # First-level initialization, default values
     def __init__(self):
         self.nfluxes = 0        # Length of flux history
+        self.fluxes = []        # flux history
+
         self.Iu = 0             # u index
         self.Iv = 1             # v index
         self.Ih = 2             # h index
-        self.fluxes = []        # flux history
+        
+        self.Nx = 1             # Default grid size
+        self.Ny = 1
+        self.Nz = 1
+
+        self.Lx = 1             # Default domain sizes
+        self.Ly = 1
+
+        method = ''             # Spectral or Finite Volume (FV)?
+
         self.g    = 9.81        # gravity
         self.f0   = 1e-4        # Coriolis
         self.cfl  = 0.01        # default CFL
@@ -28,13 +40,16 @@ class Simulation:
         self.min_dt = 1e-10     # minimum timestep
         self.BCx = 'periodic'   # x boundary condition
         self.BCy = 'periodic'   # y boundary condition
+        
         self.run_name = 'test'
+
         self.vanishing = False
         self.fps = 15
         self.dpi = 150
         self.frame_count = 0
         self.ylims = [[],[],[]]
-        self.topo_func = null_topo
+
+        self.topo_func = null_topo # Default to no topograpy
         
 
     # Full initialization for once the user has specified
@@ -88,6 +103,23 @@ class Simulation:
             self.initialize_saving()
             self.next_save_time = self.otime
 
+        # Prepare the spectral filter if we're using one
+        if self.method == 'Spectral':
+            kmax = max(self.kx.ravel())
+            ks = 0.4*kmax
+            km = 0.5*kmax
+            alpha = 0.69*ks**(-1.88/np.log(km/ks))
+            beta  = 1.88/np.log(km/ks)
+            KX,KY = np.meshgrid(self.kx,self.ky,indexing='ij')
+            self.sfilt = np.exp(-alpha*(KX**2)**(beta/2.)-alpha*(KY**2)**(beta/2.)).reshape((self.Nx,self.Ny))
+            #if (self.Nx > 1) and (self.Ny > 1):
+            #    KX,KY = np.meshgrid(self.kx,self.ky,indexing='ij')
+            #    self.sfilt = np.exp(-alpha*(KX**2)**(beta/2.)-alpha*(KY**2)**(beta/2.)).reshape((self.Nx,self.Ny))
+            #elif self.Nx > 1:
+            #    self.sfilt = np.exp(-alpha*(self.kx**2)**(beta/2.)).reshape((self.Nx,self.Ny))
+            #elif self.Ny > 1:
+            #    self.sfilt = np.exp(-alpha*(self.ky**2)**(beta/2.)).reshape((self.Nx,self.Ny))
+
     
     # Compute the current flux
     def flux(self):
@@ -133,6 +165,14 @@ class Simulation:
 
         return do_plot, do_diag, do_save
 
+    # Spectral filter
+    def apply_filter(self):
+        for ii in range(self.Nz):
+            for var in [self.Iu,self.Iv,self.Ih]:
+                self.sol[var,:,:,ii] = \
+                        ifftn(self.sfilt*fftn(self.sol[var,:,:,ii],axes=[0,1]),axes=[0,1])
+
+
     # Advance the simulation one time-step.
     def step(self):
         self.compute_dt()
@@ -142,6 +182,11 @@ class Simulation:
         do_plot, do_diag, do_save = self.adjust_dt()
 
         self.time_stepper(self)
+
+        # Filter if necessary
+        if self.method == 'Spectral':
+            self.apply_filter()
+
         self.time += self.dt
        
         if do_plot:
@@ -160,10 +205,16 @@ class Simulation:
             h0 = self.sol[self.Ih,:,:,0] - self.sol[self.Ih,:,:,1]
             minh = np.min(np.ravel(h0))
             maxh = np.max(np.ravel(h0))
-            maxu = np.max(np.ravel(self.sol[self.Iu,:,:,0]/h0))
-            minu = np.min(np.ravel(self.sol[self.Iu,:,:,0]/h0))
-            maxv = np.max(np.ravel(self.sol[self.Iv,:,:,0]/h0))
-            minv = np.min(np.ravel(self.sol[self.Iv,:,:,0]/h0))
+            if self.method == 'Spectral':
+                maxu = np.max(np.ravel(self.sol[self.Iu,:,:,0]))
+                minu = np.min(np.ravel(self.sol[self.Iu,:,:,0]))
+                maxv = np.max(np.ravel(self.sol[self.Iv,:,:,0]))
+                minv = np.min(np.ravel(self.sol[self.Iv,:,:,0]))
+            else:
+                maxu = np.max(np.ravel(self.sol[self.Iu,:,:,0]/h0))
+                minu = np.min(np.ravel(self.sol[self.Iu,:,:,0]/h0))
+                maxv = np.max(np.ravel(self.sol[self.Iv,:,:,0]/h0))
+                minv = np.min(np.ravel(self.sol[self.Iv,:,:,0]/h0))
             mass = Diagnose.compute_mass(self)
             enrg = Diagnose.compute_PE(self) + Diagnose.compute_KE(self)
 
