@@ -47,10 +47,21 @@ def my_ICs(a_sim):
 
     x0 = 1.*a_sim.Lx/2.
     W  = 30.e3 
-    amp = 10. 
+    amp = 20. 
     tmp = np.exp(-(a_sim.x-x0)**2/(W**2)).reshape((a_sim.Nx,1))
     a_sim.sol[sim.Ih,:,:,0] += amp*tmp
 sim.IC_func = my_ICs
+
+# Specify topograph
+def my_topo(a_sim):
+    
+    x0 = 1.*a_sim.Lx/4.
+    W  = 30.e3 
+    amp = 20. 
+    tmp = np.exp(-(a_sim.x-x0)**2/(W**2)).reshape((a_sim.Nx,1))
+    a_sim.sol[sim.Ih,:,:,-1] = amp*tmp
+sim.topo_func = my_topo
+
 
 # Run the simulation
 sim.initialize()

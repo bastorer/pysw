@@ -9,6 +9,9 @@ import FV_Diagnose as Diagnose
 import os
 import shutil
 
+def null_topo(a_sim):
+    return
+
 class Simulation:
 
     # First-level initialization, default values
@@ -31,6 +34,8 @@ class Simulation:
         self.dpi = 150
         self.frame_count = 0
         self.ylims = [[],[],[]]
+        self.topo_func = null_topo
+        
 
     # Full initialization for once the user has specified
     # parameters
@@ -66,7 +71,7 @@ class Simulation:
 
         # Initial conditions and topography
         self.sol = np.zeros((3,self.Nx,self.Ny,self.Nz+1)) # Extra layer for topography
-        #self.topo_func(self)
+        self.topo_func(self)
         self.IC_func(self)
 
         # If we're going to be plotting, then initialize the plots

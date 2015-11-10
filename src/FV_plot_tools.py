@@ -33,9 +33,12 @@ def initialize_plots(sim):
         for L in range(sim.Nz):
             plt.subplot(1,sim.Nz,L+1)
             axs += [plt.gca()]
-            Qs += [plt.pcolormesh(x,y,sim.sol[sim.Ih,:,:,L].T, cmap='ocean')]
+            Qs += [plt.pcolormesh(x,y,sim.sol[sim.Ih,:,:,L].T, cmap='viridis')]
             plt.colorbar()
-            plt.contour(x,y,sim.sol[sim.Ih,:,:,-1].T)
+            try:
+                plt.contour(x,y,sim.sol[sim.Ih,:,:,-1].T)
+            except:
+                pass
             plt.axis('tight')
             plt.gca().set_aspect('equal')
 

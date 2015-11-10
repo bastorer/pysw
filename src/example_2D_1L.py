@@ -21,8 +21,9 @@ sim.source_function = Fluxes.fv_sw_source
 
 # Specify paramters
 sim.Lx  = 600e3   # Domain extent (m)
-sim.Nx  = 128*4   # Grid points
-sim.Ny  = 1
+sim.Ly  = 600e3   # Domain extent (m)
+sim.Nx  = 128     # Grid points in x
+sim.Ny  = 128     # Grid points in y
 sim.Nz  = 1       # Number of layers
 sim.f0  = 2.e-4   # Coriolis
 sim.cfl = 0.2     # CFL coefficient
@@ -46,9 +47,10 @@ def my_ICs(a_sim):
         a_sim.sol[a_sim.Ih,:,:,ii] = np.sum(a_sim.Hs[ii:])
 
     x0 = 1.*a_sim.Lx/2.
+    X,Y = np.meshgrid(a_sim.x, a_sim.y,indexing='ij')
     W  = 30.e3 
     amp = 10. 
-    tmp = np.exp(-(a_sim.x-x0)**2/(W**2)).reshape((a_sim.Nx,1))
+    tmp = np.exp(-(X-x0)**2/(W**2)).reshape((a_sim.Nx,a_sim.Ny))
     a_sim.sol[sim.Ih,:,:,0] += amp*tmp
 sim.IC_func = my_ICs
 
