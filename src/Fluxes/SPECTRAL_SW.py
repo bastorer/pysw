@@ -1,65 +1,70 @@
+import Differentiation as Diff
 import numpy as np
 import sys
 
 def spectral_sw_flux(sim):
 
     # Some storage fields
-    the_flux = np.zeros(sim.sol.shape)
+    flux_u = np.zeros(sim.soln.u.shape)
+    flux_v = np.zeros(sim.soln.v.shape)
+    flux_h = np.zeros(sim.soln.h.shape)
     hs = np.zeros((sim.Nx,sim.Ny,sim.Nz+1))
 
     # Difference in layer deformations gives layer depths
-    hs[:,:,:sim.Nz] = sim.sol[sim.Ih,:,:,:sim.Nz] - sim.sol[sim.Ih,:,:,1:]
+    hs[:,:,:sim.Nz] = sim.soln.h[:,:,:sim.Nz] - sim.soln.h[:,:,1:]
 
-    # Loop through each layer and compute flux
+    # Loop through each layer and compute the flux
     for ii in range(sim.Nz):
 
-        ##
-        ## For the moment, assume one layer
-        ##
-       
         h = hs[:,:,ii].reshape((sim.Nx,sim.Ny))
-        u = sim.sol[sim.Iu,:,:,ii].reshape((sim.Nx,sim.Ny))
-        v = sim.sol[sim.Iv,:,:,ii].reshape((sim.Nx,sim.Ny))
+        u = sim.soln.u[:,:,ii].reshape((sim.Nx,sim.Ny))
+        v = sim.soln.v[:,:,ii].reshape((sim.Nx,sim.Ny))
 
         # Coriolis terms
-        the_flux[sim.Iu,:,:,ii] += -sim.f0*v
-        the_flux[sim.Iv,:,:,ii] +=  sim.f0*u
+        flux_u[:,:,ii] += -sim.f0*v
+        flux_v[:,:,ii] +=  sim.f0*u
 
         # x fluxes
         if sim.Nx > 1:
             # Compute derivatives
-            if sim.BCx == 'periodic':
+            if sim.geomx == 'periodic':
                 du = sim.ddx_period(u,sim.ik)
                 dv = sim.ddx_period(v,sim.ik)
                 dh = sim.ddx_period(h,sim.ik)
-            elif sim.BCx == 'wall':
+            elif sim.geomx == 'wall':
                 du = sim.ddx_odd(u,sim.ik)
                 dv = sim.ddx_even(v,sim.ik)
                 dh = sim.ddx_even(h,sim.ik)
 
-            # Compute fluxes
-            the_flux[sim.Iu,:,:,ii] += -u*du - sim.gs[ii]*dh
-            the_flux[sim.Iv,:,:,ii] += -u*dv    
-            the_flux[sim.Ih,:,:,ii] += -h*du - u*dh
+            # Intra-layer dyanics
+            flux_u[:,:,ii] += -u*du - sim.gs[ii]*dh
+            flux_v[:,:,ii] += -u*dv    
+            flux_h[:,:,ii] += -h*du - u*dh
 
         # y fluxes
         if sim.Ny > 1:
             # Compute derivatives
-            if sim.BCy == 'periodic':
+            if sim.geomy == 'periodic':
                 du = sim.ddy_period(u,sim.il)
                 dv = sim.ddy_period(v,sim.il)
                 dh = sim.ddy_period(h,sim.il)
-            elif sim.BCy == 'wall':
+            elif sim.geomy == 'wall':
                 du = sim.ddy_even(u,sim.il)
                 dv = sim.ddy_odd(v,sim.il)
                 dh = sim.ddy_even(h,sim.il)
 
-            # Compute fluxes
-            the_flux[sim.Iu,:,:,ii] += -v*du
-            the_flux[sim.Iv,:,:,ii] += -v*dv - sim.gs[ii]*dh
-            the_flux[sim.Ih,:,:,ii] += -h*dv - v*dh
+            # Intra-layer dynamics
+            flux_u[:,:,ii] += -v*du
+            flux_v[:,:,ii] += -v*dv - sim.gs[ii]*dh
+            flux_h[:,:,ii] += -h*dv - v*dh
 
-    return the_flux
+    return flux_u, flux_v, flux_h
 
 def spectral_sw_source(sim):
-    return np.zeros(sim.sol.shape)
+    return np.zeros(sim.soln.u.shape),np.zeros(sim.soln.v.shape),np.zeros(sim.soln.h.shape)
+
+def spectral_sw(sim):
+    sim.x_derivs = Diff.SPECTRAL_x
+    sim.y_derivs = Diff.SPECTRAL_y
+    sim.flux_function = spectral_sw_flux
+    sim.source_function = spectral_sw_source

@@ -15,4 +15,4 @@ from FV_SW import fv_sw_flux, fv_sw_source
 #from FV_SW_linear import fv_sw_linear_flux, fv_sw_linear_source
 from FV_Burger import fv_Burger_flux, fv_Burger_source
 from FV_advection import fv_advection_flux, fv_advection_source
-from SPECTRAL_SW import spectral_sw_flux, spectral_sw_source
+from SPECTRAL_SW import spectral_sw

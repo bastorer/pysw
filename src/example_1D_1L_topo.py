@@ -7,6 +7,7 @@ from constants import minute, hour, day
 
 # Create a simulation object
 sim = Simulation()
+sim.method = 'FV'
 
 # Specify geometry conditions
 sim.x_derivs = Diff.FV_x_WENO

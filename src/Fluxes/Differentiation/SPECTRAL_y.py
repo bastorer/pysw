@@ -29,11 +29,11 @@ def ddy_odd(f,il):
 def SPECTRAL_y(sim):
 
     # Set the wavenumber vectors  
-    if sim.BCy =='periodic':
+    if sim.geomy =='periodic':
         ky = 2*np.pi*fftfreq(sim.Ny,d=sim.Ly/sim.Ny)
         sim.ky = ky.copy()
         sim.il = 1j*np.tile(ky.reshape((1,sim.Ny)),(sim.Nx,1))
-    elif sim.BCy == 'walls':
+    elif sim.geomy == 'walls':
         ky = 1j*np.pi*fftfreq(2*sim.Ny,d=sim.Ly/sim.Ny)
         sim.ky = ky.copy()
         sim.il = 1j*np.tile(ky.reshape((1,2*sim.Ny)),(sim.Nx,1))

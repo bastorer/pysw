@@ -29,11 +29,11 @@ def ddx_odd(f,ik):
 def SPECTRAL_x(sim):
 
     # Set the wavenumber vectors  
-    if sim.BCx =='periodic':
+    if sim.geomx =='periodic':
         kx = 2*np.pi*fftfreq(sim.Nx,d=sim.Lx/sim.Nx)
         sim.kx = kx.copy()
         sim.ik = 1j*np.tile(kx.reshape((sim.Nx,1)),(1,sim.Ny))
-    elif sim.BCx == 'walls':
+    elif sim.geomx == 'walls':
         kx = np.pi*fftfreq(2*sim.Nx,d=sim.Lx/sim.Nx)
         sim.kx = kx.copy()
         sim.ik = 1j*np.tile(kx.reshape((2*sim.Nx,1)),(1,sim.Ny))

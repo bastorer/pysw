@@ -33,10 +33,10 @@ def initialize_plots(sim):
         for L in range(sim.Nz):
             plt.subplot(1,sim.Nz,L+1)
             axs += [plt.gca()]
-            Qs += [plt.pcolormesh(x,y,sim.sol[sim.Ih,:,:,L].T, cmap='viridis')]
+            Qs += [plt.pcolormesh(x,y,sim.soln.h[:,:,L].T, cmap='viridis')]
             plt.colorbar()
             try:
-                plt.contour(x,y,sim.sol[sim.Ih,:,:,-1].T)
+                plt.contour(x,y,sim.soln.h[:,:,-1].T)
             except:
                 pass
             plt.axis('tight')
@@ -45,23 +45,56 @@ def initialize_plots(sim):
     else:
         Qs  = [[],[],[]]
         axs = []
-        for var in [sim.Iu,sim.Iv,sim.Ih]:
-            plt.subplot(3,1,var+1)
-            axs += [plt.gca()]
-            for L in range(sim.Nz):
-                if sim.Nx > 1:
-                    x = sim.x/1e3
-                if sim.Ny > 1:
-                    x = sim.y/1e3
-                   
-                l, = plt.plot(x,sim.sol[var,:,:,L].ravel())
-                if len(sim.ylims[var]) == 2:
-                    plt.ylim(sim.ylims[var])
-                Qs[var] += [l]
-                    
-            if var == sim.Ih:
-                # Plot topography
-                plt.plot(x,sim.sol[sim.Ih,:,:,-1].ravel(),'k')
+
+        # Plot u
+        plt.subplot(3,1,1)
+        axs += [plt.gca()]
+        for L in range(sim.Nz):
+            if sim.Nx > 1:
+                x = sim.x/1e3
+            if sim.Ny > 1:
+                x = sim.y/1e3
+            l, = plt.plot(x,sim.soln.u[:,:,L].ravel())
+            if len(sim.ylims[0]) == 2:
+                plt.ylim(sim.ylims[0])
+            if sim.method == 'Spectral':
+                plt.ylabel('u')
+            else:
+                plt.ylabel('uh')
+            Qs[0] += [l]
+
+        # Plot v
+        plt.subplot(3,1,2)
+        axs += [plt.gca()]
+        for L in range(sim.Nz):
+            if sim.Nx > 1:
+                x = sim.x/1e3
+            if sim.Ny > 1:
+                x = sim.y/1e3
+            l, = plt.plot(x,sim.soln.v[:,:,L].ravel())
+            if len(sim.ylims[1]) == 2:
+                plt.ylim(sim.ylims[1])
+            if sim.method == 'Spectral':
+                plt.ylabel('v')
+            else:
+                plt.ylabel('vh')
+            Qs[1] += [l]
+
+        # Plot h
+        plt.subplot(3,1,3)
+        axs += [plt.gca()]
+        for L in range(sim.Nz):
+            if sim.Nx > 1:
+                x = sim.x/1e3
+            if sim.Ny > 1:
+                x = sim.y/1e3
+            l, = plt.plot(x,sim.soln.h[:,:,L].ravel())
+            if len(sim.ylims[2]) == 2:
+                plt.ylim(sim.ylims[2])
+            plt.ylabel('h')
+            Qs[2] += [l]
+
+        plt.plot(x,sim.soln.h[:,:,-1].ravel(),'k')
 
 
     if sim.animate == 'Anim':
@@ -71,14 +104,6 @@ def initialize_plots(sim):
     sim.Qs  = Qs
     sim.axs = axs
 
-    if sim.animate == 'Save':
-        pass
-        #movie_name = 'Outputs/' + sim.run_name + '.mp4'
-        #FFMPEG = anim.writers['ffmpeg']
-        #writer = FFMPEG(fps=sim.fps)
-        #writer.setup(fig, movie_name, sim.dpi)
-        #sim.movie_writer = writer
-        #sim.movie_writer.grab_frame()
 
 # Update plot objects
 def update_plots(sim):
@@ -87,22 +112,33 @@ def update_plots(sim):
 
     if sim.Nx > 1 and sim.Ny > 1:
         for L in range(sim.Nz):
-            sim.Qs[L].set_array(np.ravel(sim.sol[sim.Ih,:sim.Nx-1,:sim.Ny-1,L].T))
+            sim.Qs[L].set_array(np.ravel(sim.soln.h[:sim.Nx-1,:sim.Ny-1,L].T))
             sim.Qs[L].changed()
     else:
-        for var in [sim.Iu,sim.Iv,sim.Ih]:
-            for L in range(sim.Nz):
-                sim.Qs[var][L].set_ydata(sim.sol[var,:,:,L])
-            sim.axs[var].relim()
-            sim.axs[var].autoscale_view()
+        # Update u
+        for L in range(sim.Nz):
+            sim.Qs[0][L].set_ydata(sim.soln.u[:,:,L])
+        sim.axs[0].relim()
+        sim.axs[0].autoscale_view()
+
+        # Update v
+        for L in range(sim.Nz):
+            sim.Qs[1][L].set_ydata(sim.soln.v[:,:,L])
+        sim.axs[1].relim()
+        sim.axs[1].autoscale_view()
+
+        # Update h
+        for L in range(sim.Nz):
+            sim.Qs[2][L].set_ydata(sim.soln.h[:,:,L])
+        sim.axs[2].relim()
+        sim.axs[2].autoscale_view()
+
     plt.draw()
 
     if sim.animate == 'Save':
-        sim.fig.savefig('Frames/{0:04d}.png'.format(sim.frame_count))
+        sim.fig.savefig('Frames/{0:05d}.png'.format(sim.frame_count))
         sim.frame_count += 1
 
 # Finalize
 def end_movie(sim):
     pass
-    #sim.movie_writer.finish()
-

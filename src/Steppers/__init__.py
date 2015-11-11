@@ -9,4 +9,3 @@ __date__   = "16th of March, 2015"
 from Euler import Euler
 from AB2 import AB2
 from RK4 import RK4
-from TVD_RK3 import TVD_RK3

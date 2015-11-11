@@ -13,17 +13,25 @@ import shutil
 def null_topo(a_sim):
     return
 
+class Solution():
+    def __init__(self,Nx,Ny,Nz):
+        self.u = np.zeros((Nx,Ny,Nz+1))
+        self.v = np.zeros((Nx,Ny,Nz+1))
+        self.h = np.zeros((Nx,Ny,Nz+1))
+
+class Flux():
+    def __init__(self):
+        self.u = []
+        self.v = []
+        self.h = []
+
 class Simulation:
 
     # First-level initialization, default values
     def __init__(self):
         self.nfluxes = 0        # Length of flux history
-        self.fluxes = []        # flux history
+        self.fluxes = Flux()    # flux history
 
-        self.Iu = 0             # u index
-        self.Iv = 1             # v index
-        self.Ih = 2             # h index
-        
         self.Nx = 1             # Default grid size
         self.Ny = 1
         self.Nz = 1
@@ -31,15 +39,16 @@ class Simulation:
         self.Lx = 1             # Default domain sizes
         self.Ly = 1
 
-        method = ''             # Spectral or Finite Volume (FV)?
+        self.method = ''             # Spectral or Finite Volume (FV)?
 
         self.g    = 9.81        # gravity
         self.f0   = 1e-4        # Coriolis
         self.cfl  = 0.01        # default CFL
         self.time = 0           # initial time
         self.min_dt = 1e-10     # minimum timestep
-        self.BCx = 'periodic'   # x boundary condition
-        self.BCy = 'periodic'   # y boundary condition
+
+        self.geomx = 'periodic'   # x boundary condition
+        self.geomy = 'periodic'   # y boundary condition
         
         self.run_name = 'test'
 
@@ -72,6 +81,7 @@ class Simulation:
         self.dx = dxs
 
         # Initialize differentiation and averaging operators
+        self.flux_method(self)
         self.x_derivs(self)
         self.y_derivs(self)
 
@@ -85,23 +95,8 @@ class Simulation:
             self.gs = np.array([[self.g]])
 
         # Initial conditions and topography
-        self.sol = np.zeros((3,self.Nx,self.Ny,self.Nz+1)) # Extra layer for topography
+        self.soln = Solution(self.Nx,self.Ny,self.Nz)
         self.topo_func(self)
-        self.IC_func(self)
-
-        # If we're going to be plotting, then initialize the plots
-        if self.animate != 'None':
-            Plot_tools.initialize_plots(self)
-            self.next_plot_time = self.ptime
-
-        # If we're going to be diagnosing, initialize those
-        Diagnose.initialize_diagnostics(self)
-    
-        # If we're saving, initialize those too
-        if self.output:
-            self.out_counter = 0
-            self.initialize_saving()
-            self.next_save_time = self.otime
 
         # Prepare the spectral filter if we're using one
         if self.method == 'Spectral':
@@ -112,13 +107,22 @@ class Simulation:
             beta  = 1.88/np.log(km/ks)
             KX,KY = np.meshgrid(self.kx,self.ky,indexing='ij')
             self.sfilt = np.exp(-alpha*(KX**2)**(beta/2.)-alpha*(KY**2)**(beta/2.)).reshape((self.Nx,self.Ny))
-            #if (self.Nx > 1) and (self.Ny > 1):
-            #    KX,KY = np.meshgrid(self.kx,self.ky,indexing='ij')
-            #    self.sfilt = np.exp(-alpha*(KX**2)**(beta/2.)-alpha*(KY**2)**(beta/2.)).reshape((self.Nx,self.Ny))
-            #elif self.Nx > 1:
-            #    self.sfilt = np.exp(-alpha*(self.kx**2)**(beta/2.)).reshape((self.Nx,self.Ny))
-            #elif self.Ny > 1:
-            #    self.sfilt = np.exp(-alpha*(self.ky**2)**(beta/2.)).reshape((self.Nx,self.Ny))
+
+    def prepare_for_run(self):
+
+        # If we're going to be plotting, then initialize the plots
+        if self.animate != 'None':
+            Plot_tools.initialize_plots(self)
+            self.next_plot_time = self.plott
+
+        # If we're going to be diagnosing, initialize those
+        Diagnose.initialize_diagnostics(self)
+    
+        # If we're saving, initialize those too
+        if self.output:
+            self.out_counter = 0
+            self.initialize_saving()
+            self.next_save_time = self.otime
 
     
     # Compute the current flux
@@ -168,9 +172,9 @@ class Simulation:
     # Spectral filter
     def apply_filter(self):
         for ii in range(self.Nz):
-            for var in [self.Iu,self.Iv,self.Ih]:
-                self.sol[var,:,:,ii] = \
-                        ifftn(self.sfilt*fftn(self.sol[var,:,:,ii],axes=[0,1]),axes=[0,1])
+            self.soln.u[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.u[:,:,ii],axes=[0,1]),axes=[0,1])
+            self.soln.v[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.v[:,:,ii],axes=[0,1]),axes=[0,1])
+            self.soln.h[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.h[:,:,ii],axes=[0,1]),axes=[0,1])
 
 
     # Advance the simulation one time-step.
@@ -181,7 +185,7 @@ class Simulation:
         # to match an output time
         do_plot, do_diag, do_save = self.adjust_dt()
 
-        self.time_stepper(self)
+        self.stepper(self)
 
         # Filter if necessary
         if self.method == 'Spectral':
@@ -191,7 +195,7 @@ class Simulation:
        
         if do_plot:
             Plot_tools.update_plots(self)
-            self.next_plot_time += self.ptime
+            self.next_plot_time += self.plott
 
         if do_diag:
             Diagnose.update(self)
@@ -202,19 +206,19 @@ class Simulation:
 
         if do_plot or self.time == self.dt:
 
-            h0 = self.sol[self.Ih,:,:,0] - self.sol[self.Ih,:,:,1]
+            h0 = self.soln.h[:,:,0] - self.soln.h[:,:,1]
             minh = np.min(np.ravel(h0))
             maxh = np.max(np.ravel(h0))
             if self.method == 'Spectral':
-                maxu = np.max(np.ravel(self.sol[self.Iu,:,:,0]))
-                minu = np.min(np.ravel(self.sol[self.Iu,:,:,0]))
-                maxv = np.max(np.ravel(self.sol[self.Iv,:,:,0]))
-                minv = np.min(np.ravel(self.sol[self.Iv,:,:,0]))
+                maxu = np.max(np.ravel(self.soln.u[:,:,0]))
+                minu = np.min(np.ravel(self.soln.u[:,:,0]))
+                maxv = np.max(np.ravel(self.soln.v[:,:,0]))
+                minv = np.min(np.ravel(self.soln.v[:,:,0]))
             else:
-                maxu = np.max(np.ravel(self.sol[self.Iu,:,:,0]/h0))
-                minu = np.min(np.ravel(self.sol[self.Iu,:,:,0]/h0))
-                maxv = np.max(np.ravel(self.sol[self.Iv,:,:,0]/h0))
-                minv = np.min(np.ravel(self.sol[self.Iv,:,:,0]/h0))
+                maxu = np.max(np.ravel(self.soln.u[:,:,0]/h0))
+                minu = np.min(np.ravel(self.soln.u[:,:,0]/h0))
+                maxv = np.max(np.ravel(self.soln.v[:,:,0]/h0))
+                minv = np.min(np.ravel(self.soln.v[:,:,0]/h0))
             mass = Diagnose.compute_mass(self)
             enrg = Diagnose.compute_PE(self) + Diagnose.compute_KE(self)
 
@@ -244,11 +248,13 @@ class Simulation:
                 pstr += ', del_enrg = {0:+.2g}'.format(enrg/(self.KEs[0]+self.PEs[0])-1)
                 pstr += '\n'
                 pstr += '  = {0:.3%}'.format(self.time/self.end_time)
-            print('\n{0:s}: {1:d}'.format(self.run_name, int(self.time/self.ptime)))
+            print('\n{0:s}: {1:d}'.format(self.run_name, int(self.time/self.plott)))
             print(pstr)
 
     # Step until end-time achieved.
     def run(self):
+
+        self.prepare_for_run()
 
         while self.time < self.end_time:
             self.step()
@@ -270,21 +276,27 @@ class Simulation:
     def compute_dt(self):
         c = np.sqrt(self.g*np.sum(self.Hs))
         eps = 1.e-8 
-        hs = self.sol[self.Ih,:,:,:self.Nz] - self.sol[self.Ih,:,:,1:]
+        hs = self.soln.h[:,:,:self.Nz] - self.soln.h[:,:,1:]
 
         if self.vanishing:
             tmp = self.min_depth**self.np/(hs**(1-self.np))
             c = np.max(np.sqrt(c**2 + self.g*tmp).ravel())
 
         if self.Nx > 1:
-            u = self.sol[self.Iu,:,:,:self.Nz]/(eps + hs)
+            if self.method == 'Spectral':
+                u = self.soln.u[:,:,:self.Nz]
+            else:
+                u = self.soln.u[:,:,:self.Nz]/(eps + hs)
             max_u = np.max(np.abs(u.ravel()))
             dt_x = self.dx[0]/(max_u+2*c)
         else:
             dt_x = np.Inf
 
         if self.Ny > 1:
-            u = self.sol[self.Iv,:,:,:self.Nz]/(eps + hs)
+            if self.method == 'Spectral':
+                u = self.soln.v[:,:,:self.Nz]
+            else:
+                u = self.soln.v[:,:,:self.Nz]/(eps + hs)
             max_v = np.max(np.abs(u.ravel()))
             dt_y = self.dx[1]/(max_v+2*c)
         else:
@@ -340,7 +352,7 @@ class Simulation:
     # Save current state
     def save_state(self):
         np.savez_compressed('Outputs/{0:s}/{1:04d}'.format(self.run_name,self.out_counter),
-                    sol = self.sol, t = self.time)
+                    soln = self.soln, t = self.time)
 
         self.out_counter += 1
 

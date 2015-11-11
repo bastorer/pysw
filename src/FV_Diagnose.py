@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-eps = 1e-8
+eps = 1e-10
 
 # Initialize Diagnostics
 def initialize_diagnostics(sim):
@@ -11,7 +11,7 @@ def initialize_diagnostics(sim):
     sim.PEs = []
     sim.ENs = []
     sim.Ms  = []
-    sim.next_diag_time = sim.dtime
+    sim.next_diag_time = sim.diagt
 
     # Compute the initial values
     area = sim.dx[0]*sim.dx[1]
@@ -21,17 +21,19 @@ def initialize_diagnostics(sim):
     M  = 0
 
     for ii in range(sim.Nz):
-        h   = sim.sol[sim.Ih,:,:,ii] - sim.sol[sim.Ih,:,:,ii+1]
-        v   = sim.sol[sim.Iv,:,:,ii]/(eps + h)
-        u   = sim.sol[sim.Iu,:,:,ii]/(eps + h)
-        dH2 = sim.sol[sim.Ih,:,:,ii]**2 - sim.sol[sim.Ih,:,:,ii+1]**2
+        h   = sim.soln.h[:,:,ii] - sim.soln.h[:,:,ii+1]
+
+        if sim.method == 'Spectral':
+            v   = sim.soln.u[:,:,ii]
+            u   = sim.soln.v[:,:,ii]
+        else:
+            v   = sim.soln.u[:,:,ii]/(eps + h)
+            u   = sim.soln.v[:,:,ii]/(eps + h)
+        dH2 = sim.soln.h[:,:,ii]**2 - sim.soln.h[:,:,ii+1]**2
 
         KE += 0.5*sim.rho[ii]*np.sum(np.ravel(area*h*(u**2 + v**2)))
 
         PE += area*0.5*sim.rho[ii]*sim.gs[0,ii]*np.sum(np.ravel(dH2))
-
-        #q2  = (sim.Dx(v,sim.dx) - sim.Dy(u,sim.dx) + sim.f0)**2/h
-        #EN += np.sum(area*np.ravel(q2))
 
         M += area*np.sum(np.ravel(h))*sim.rho[ii]
 
@@ -45,9 +47,13 @@ def compute_KE(sim):
     KE = 0
     area = sim.dx[0]*sim.dx[1]
     for ii in range(sim.Nz):
-        h   = sim.sol[sim.Ih,:,:,ii] - sim.sol[sim.Ih,:,:,ii+1]
-        v   = sim.sol[sim.Iv,:,:,ii]/(eps + h)
-        u   = sim.sol[sim.Iu,:,:,ii]/(eps + h)
+        h   = sim.soln.h[:,:,ii] - sim.soln.h[:,:,ii+1]
+        if sim.method == 'Spectral':
+            v   = sim.soln.u[:,:,ii]
+            u   = sim.soln.v[:,:,ii]
+        else:
+            v   = sim.soln.u[:,:,ii]/(eps + h)
+            u   = sim.soln.v[:,:,ii]/(eps + h)
         KE += 0.5*sim.rho[ii]*np.sum(np.ravel(area*h*(u**2 + v**2))) 
     return KE
 
@@ -56,7 +62,7 @@ def compute_PE(sim):
     PE = 0
     area = sim.dx[0]*sim.dx[1]
     for ii in range(sim.Nz):
-        dH2 = sim.sol[sim.Ih,:,:,ii]**2 - sim.sol[sim.Ih,:,:,ii+1]**2
+        dH2 = sim.soln.h[:,:,ii]**2 - sim.soln.h[:,:,ii+1]**2
         PE += area*0.5*sim.rho[ii]*sim.gs[0,ii]*np.sum(np.ravel(dH2))
     return PE
 
@@ -65,9 +71,13 @@ def compute_enstrophy(sim):
     EN = 0
     for ii in range(sim.Nz-1,-1,-1):
         # Compute the mid-depth of the next layer
-        h   = sim.sol[sim.Ih,:,:,ii] - sim.sol[sim.Ih,:,:,ii+1]
-        v   = sim.sol[sim.Iv,:,:,ii]/(eps + h)
-        u   = sim.sol[sim.Iu,:,:,ii]/(eps + h)
+        h   = sim.soln.h[:,:,ii] - sim.soln.h[:,:,ii+1]
+        if sim.method == 'Spectral':
+            v   = sim.soln.u[:,:,ii]
+            u   = sim.soln.v[:,:,ii]
+        else:
+            v   = sim.soln.u[:,:,ii]/(eps + h)
+            u   = sim.soln.v[:,:,ii]/(eps + h)
         q2  = (sim.dxp(v,sim.dx) - sim.dyp(u,sim.dx) + sim.f0)**2/h
         EN += np.sum(np.ravel(q2))
     return EN
@@ -76,7 +86,7 @@ def compute_mass(sim):
     M = 0.
     Area = sim.dx[0]*sim.dx[1]
     for ii in range(sim.Nz):
-        h = sim.sol[sim.Ih,:,:,ii] - sim.sol[sim.Ih,:,:,ii+1]
+        h = sim.soln.h[:,:,ii] - sim.soln.h[:,:,ii+1]
         M += Area*np.sum(np.ravel(h))*sim.rho[ii]
     return M
     
@@ -90,10 +100,14 @@ def update(sim):
     M  = 0
 
     for ii in range(sim.Nz):
-        h   = sim.sol[sim.Ih,:,:,ii] - sim.sol[sim.Ih,:,:,ii+1]
-        v   = sim.sol[sim.Iv,:,:,ii]/(eps + h)
-        u   = sim.sol[sim.Iu,:,:,ii]/(eps + h)
-        dH2 = sim.sol[sim.Ih,:,:,ii]**2 - sim.sol[sim.Ih,:,:,ii+1]**2
+        h   = sim.soln.h[:,:,ii] - sim.soln.h[:,:,ii+1]
+        if sim.method == 'Spectral':
+            v   = sim.soln.u[:,:,ii]
+            u   = sim.soln.v[:,:,ii]
+        else:
+            v   = sim.soln.u[:,:,ii]/(eps + h)
+            u   = sim.soln.v[:,:,ii]/(eps + h)
+        dH2 = sim.soln.h[:,:,ii]**2 - sim.soln.h[:,:,ii+1]**2
 
         KE += area*0.5*sim.rho[ii]*np.sum(np.ravel(h*(u**2 + v**2)))
 
@@ -107,7 +121,7 @@ def update(sim):
     sim.Ms  += [M]
 
     sim.diag_times += [sim.time]
-    sim.next_diag_time += sim.dtime
+    sim.next_diag_time += sim.diagt
 
 def plot(sim):
     KE = np.array(sim.KEs)
@@ -142,9 +156,6 @@ def plot(sim):
     plt.tight_layout()
     plt.locator_params(nbins=5)
 
-    #plt.gca().tick_params(axis='x', pad=15)
-    #plt.gca().tick_params(axis='y', pad=15)
-    
     fig.tight_layout()
     fig.savefig('Outputs/' + sim.run_name + '_diagnostics')
     

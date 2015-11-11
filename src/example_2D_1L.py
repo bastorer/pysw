@@ -7,6 +7,7 @@ from constants import minute, hour, day
 
 # Create a simulation object
 sim = Simulation()
+sim.method = 'FV'
 
 # Specify geometry conditions
 sim.x_derivs = Diff.FV_x_WENO
@@ -21,11 +22,11 @@ sim.source_function = Fluxes.fv_sw_source
 
 # Specify paramters
 sim.Lx  = 600e3   # Domain extent (m)
-sim.Ly  = 600e3   # Domain extent (m)
-sim.Nx  = 128     # Grid points in x
-sim.Ny  = 128     # Grid points in y
+sim.Ly  = 400e3   # Domain extent (m)
+sim.Nx  = 128*2   # Grid points in x
+sim.Ny  = 128*2   # Grid points in y
 sim.Nz  = 1       # Number of layers
-sim.f0  = 2.e-4   # Coriolis
+sim.f0  = 0.e-4   # Coriolis
 sim.cfl = 0.2     # CFL coefficient
 sim.Hs  = [50.]   # Vector of mean layer depths
 sim.rho = [1025.] # Vector of layer densities
@@ -47,14 +48,15 @@ def my_ICs(a_sim):
         a_sim.sol[a_sim.Ih,:,:,ii] = np.sum(a_sim.Hs[ii:])
 
     x0 = 1.*a_sim.Lx/2.
+    y0 = 1.*a_sim.Ly/2.
     X,Y = np.meshgrid(a_sim.x, a_sim.y,indexing='ij')
     W  = 30.e3 
     amp = 10. 
-    tmp = np.exp(-(X-x0)**2/(W**2)).reshape((a_sim.Nx,a_sim.Ny))
+    tmp = np.exp(-((X-x0)/W)**2 - ((Y-y0)/W)**2).reshape((a_sim.Nx,a_sim.Ny))
     a_sim.sol[sim.Ih,:,:,0] += amp*tmp
 sim.IC_func = my_ICs
 
 # Run the simulation
 sim.initialize()
-sim.end_time = 4.*hour
+sim.end_time = 8.*hour
 sim.run()
