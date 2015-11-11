@@ -1,62 +1,62 @@
-import Differentiation as Diff
-import Steppers
-import Fluxes
+import Steppers as Step
+import Fluxes as Flux
 import numpy as np
 from PySW import Simulation
 from constants import minute, hour, day
 
 # Create a simulation object
 sim = Simulation()
+
+# Specify numerical method: 'Spectral' or 'FV'
 sim.method = 'Spectral'
 
-# Specify geometry conditions
-sim.x_derivs = Diff.SPECTRAL_x
-sim.y_derivs = Diff.SPECTRAL_y
+# Specify geometry conditions: 'periodic' or 'wall'
+sim.geomx = 'periodic'
 
-# Specify time-stepping algorithm
-sim.time_stepper = Steppers.AB2
+# Specify time-stepping algorithm: 'Euler', 'AB2', 'RK4'
+sim.stepper = Step.AB2
 
 # Specify the flux and source function
-sim.flux_function = Fluxes.spectral_sw_flux
-sim.source_function = Fluxes.spectral_sw_source
+sim.flux_method = Flux.spectral_sw
 
 # Specify paramters
-sim.Lx  = 600e3   # Domain extent (m)
-sim.Ly  = 400e3   # Domain extent (m)
-sim.Nx  = 128*2   # Grid points in x
-sim.Ny  = 128*2   # Grid points in y
-sim.Nz  = 1       # Number of layers
-sim.f0  = 0.e-4   # Coriolis
-sim.cfl = 0.2     # CFL coefficient
-sim.Hs  = [50.]   # Vector of mean layer depths
-sim.rho = [1025.] # Vector of layer densities
-sim.ptime = 1.*minute
-sim.dtime = 1.*minute
-sim.output = False
-sim.animate = 'Save'
+sim.Lx  = 1000e3     # Domain extent (m)
+sim.Ly  = 600e3     # Domain extent (m)
+sim.Nx  = 128       # Grid points
+sim.Ny  = 128  
+sim.Nz  = 1         # Number of layers
+sim.f0  = 2.e-4     # Coriolis
+sim.cfl = 0.02      # CFL coefficient
+sim.Hs  = [50.]     # Vector of mean layer depths
+sim.rho = [1025.]   # Vector of layer densities
+
+# Plotting parameters
+sim.plott = 2.*minute   # Time between plots
+sim.animate = 'Save'    # 'Save' to create video frames, 'Anim' to animate, 'None' otherwise
+sim.ylims[2] = [48,52]  # Manual ylimits on plots: ylims[0] -> u, ylims[1] -> v, ylim[2] -> h
+
+# Output parameters
+sim.output = False      # True or False
+sim.savet  = 1.*hour    # Time between saves
+
+# Diagnostics parameters
+sim.diagt = 2.*minute
 sim.diagnose = False
 
+# Initialize the grid and zero solutions
+sim.initialize()
+
 # Specify initial conditions
-# (this can also be put in a separate file,
-#   may be useful for more complicated ICs)
-def my_ICs(a_sim):
+for ii in range(sim.Nz):
+    sim.soln.h[:,:,ii] = np.sum(sim.Hs[ii:])
 
-    # Initial velocities are zero
-
-    # Initialize etas
-    for ii in range(a_sim.Nz):
-        a_sim.sol[a_sim.Ih,:,:,ii] = np.sum(a_sim.Hs[ii:])
-
-    x0 = 1.*a_sim.Lx/2.
-    y0 = 1.*a_sim.Ly/2.
-    X,Y = np.meshgrid(a_sim.x, a_sim.y,indexing='ij')
-    W  = 30.e3 
-    amp = 10. 
-    tmp = np.exp(-((X-x0)/W)**2 - ((Y-y0)/W)**2).reshape((a_sim.Nx,a_sim.Ny))
-    a_sim.sol[sim.Ih,:,:,0] += amp*tmp
-sim.IC_func = my_ICs
+x0 = 1.*sim.Lx/2.
+y0 = 1.*sim.Ly/2.
+W  = 50.e3 
+amp = 1. 
+X,Y = np.meshgrid(sim.x,sim.y,indexing='ij')
+sim.soln.h[:,:,0] += amp*np.exp(-((X-x0)/W)**2 - ((Y-y0)/W)**2).reshape((sim.Nx,sim.Ny))
 
 # Run the simulation
-sim.initialize()
 sim.end_time = 8.*hour
 sim.run()
