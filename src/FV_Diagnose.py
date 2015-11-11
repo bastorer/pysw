@@ -157,7 +157,7 @@ def plot(sim):
     plt.locator_params(nbins=5)
 
     fig.tight_layout()
-    fig.savefig('Outputs/' + sim.run_name + '_diagnostics')
+    fig.savefig(sim.run_name + '_diagnostics')
     
     return fig
 
