@@ -14,23 +14,23 @@ def AB2(sim):
     elif len(sim.fluxes.u) == 1:
         # Do AB2
         
-        flux_u, flux_v, flux_h = sim.flux()
-        src_u,  src_v,  src_h  = sim.source()
+        sim.flux()
+        sim.source()
 
         w1 = sim.dt*(1. + 0.5*sim.dt/sim.dts[0])
         w2 = -0.5*sim.dt**2/sim.dts[0]
         
-        sim.soln.u += w1*(flux_u+src_u) + w2*sim.fluxes.u[0]
-        sim.soln.v += w1*(flux_v+src_v) + w2*sim.fluxes.v[0]
-        sim.soln.h += w1*(flux_h+src_h) + w2*sim.fluxes.h[0]
+        sim.soln.u += w1*sim.curr_flux.u + w2*sim.fluxes.u[0]
+        sim.soln.v += w1*sim.curr_flux.v + w2*sim.fluxes.v[0]
+        sim.soln.h += w1*sim.curr_flux.h + w2*sim.fluxes.h[0]
         
         if sim.nfluxes == 1:
-            sim.fluxes.u = [flux_u+src_u]
-            sim.fluxes.v = [flux_v+src_v]
-            sim.fluxes.h = [flux_h+src_h]
+            sim.fluxes.u = [sim.curr_flux.u]
+            sim.fluxes.v = [sim.curr_flux.v]
+            sim.fluxes.h = [sim.curr_flux.h]
             sim.dts    = [sim.dt]
         else:
-            sim.fluxes.u = [flux_u+src_u] + sim.fluxes.u
-            sim.fluxes.v = [flux_v+src_v] + sim.fluxes.v
-            sim.fluxes.h = [flux_h+src_h] + sim.fluxes.h
+            sim.fluxes.u = [sim.curr_flux.u] + sim.fluxes.u
+            sim.fluxes.v = [sim.curr_flux.v] + sim.fluxes.v
+            sim.fluxes.h = [sim.curr_flux.h] + sim.fluxes.h
             sim.dts = [sim.dt] + sim.dts

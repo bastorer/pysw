@@ -4,8 +4,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import FV_plot_tools as Plot_tools
-import FV_Diagnose as Diagnose
+import Plot_tools
+import Diagnose
 from scipy.fftpack import fftn, ifftn, fftfreq
 import os
 import shutil
@@ -96,6 +96,7 @@ class Simulation:
 
         # Initial conditions and topography
         self.soln = Solution(self.Nx,self.Ny,self.Nz)
+        self.curr_flux = Solution(self.Nx,self.Ny,self.Nz)
         self.topo_func(self)
 
         # Prepare the spectral filter if we're using one
@@ -172,9 +173,9 @@ class Simulation:
     # Spectral filter
     def apply_filter(self):
         for ii in range(self.Nz):
-            self.soln.u[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.u[:,:,ii],axes=[0,1]),axes=[0,1])
-            self.soln.v[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.v[:,:,ii],axes=[0,1]),axes=[0,1])
-            self.soln.h[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.h[:,:,ii],axes=[0,1]),axes=[0,1])
+            self.soln.u[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.u[:,:,ii],axes=[0,1]),axes=[0,1]).real
+            self.soln.v[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.v[:,:,ii],axes=[0,1]),axes=[0,1]).real
+            self.soln.h[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.h[:,:,ii],axes=[0,1]),axes=[0,1]).real
 
 
     # Advance the simulation one time-step.

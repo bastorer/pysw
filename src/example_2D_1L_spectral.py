@@ -12,11 +12,12 @@ sim.method = 'Spectral'
 
 # Specify geometry conditions: 'periodic' or 'wall'
 sim.geomx = 'periodic'
+sim.geomy = 'periodic'
 
-# Specify time-stepping algorithm: 'Euler', 'AB2', 'RK4'
+# Specify time-stepping algorithm: Euler, AB2, RK4
 sim.stepper = Step.AB2
 
-# Specify the flux and source function
+# Specify the flux method: spectral_sw is only option currently 
 sim.flux_method = Flux.spectral_sw
 
 # Specify paramters
@@ -25,14 +26,14 @@ sim.Ly  = 600e3     # Domain extent (m)
 sim.Nx  = 128       # Grid points
 sim.Ny  = 128  
 sim.Nz  = 1         # Number of layers
-sim.f0  = 2.e-4     # Coriolis
-sim.cfl = 0.02      # CFL coefficient
+sim.f0  = 1.e-4     # Coriolis
+sim.cfl = 0.2      # CFL coefficient
 sim.Hs  = [50.]     # Vector of mean layer depths
 sim.rho = [1025.]   # Vector of layer densities
 
 # Plotting parameters
-sim.plott = 2.*minute   # Time between plots
-sim.animate = 'Save'    # 'Save' to create video frames, 'Anim' to animate, 'None' otherwise
+sim.plott = 8.*minute   # Time between plots
+sim.animate = 'Anim'    # 'Save' to create video frames, 'Anim' to animate, 'None' otherwise
 sim.ylims[2] = [48,52]  # Manual ylimits on plots: ylims[0] -> u, ylims[1] -> v, ylim[2] -> h
 
 # Output parameters

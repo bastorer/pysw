@@ -1,5 +1,8 @@
 import numpy as np   
-from scipy.fftpack import fft, ifft, fftfreq
+try:
+    from pyfftw.interfaces.scipy_fftpack import fft, ifft, fftfreq
+except:
+    from scipy.fftpack import fft, ifft, fftfreq
 
 def ddx_period(f,ik):
 
@@ -42,6 +45,11 @@ def SPECTRAL_x(sim):
         sys.exit()
 
     # Set the differentiation operators
-    sim.ddx_period = ddx_period
-    sim.ddx_even   = ddx_even
-    sim.ddx_odd    = ddx_odd
+    if sim.geomx == 'periodic':
+        sim.ddx_u = ddx_period
+        sim.ddx_v = ddx_period
+        sim.ddx_h = ddx_period
+    elif sim.geomx == 'wall':
+        sim.ddx_u = ddx_odd
+        sim.ddx_v = ddx_even
+        sim.ddx_h = ddx_even

@@ -1,5 +1,8 @@
 import numpy as np   
-from scipy.fftpack import fft, ifft, fftfreq
+try:
+    from pyfftw.interfaces.scipy_fftpack import fft, ifft, fftfreq
+except:
+    from scipy.fftpack import fft, ifft, fftfreq
 
 def ddy_period(f,il):
 
@@ -42,6 +45,11 @@ def SPECTRAL_y(sim):
         sys.exit()
 
     # Set the differentiation operators
-    sim.ddy_period = ddy_period
-    sim.ddy_even   = ddy_even
-    sim.ddy_odd    = ddy_odd
+    if sim.geomy == 'periodic':
+        sim.ddy_u = ddy_period
+        sim.ddy_v = ddy_period
+        sim.ddy_h = ddy_period
+    elif sim.geomy == 'wall':
+        sim.ddy_u = ddy_even
+        sim.ddy_v = ddy_odd
+        sim.ddy_h = ddy_even

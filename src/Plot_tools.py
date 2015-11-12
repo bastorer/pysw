@@ -99,7 +99,8 @@ def initialize_plots(sim):
 
     if sim.animate == 'Anim':
         plt.ion()
-        plt.show()
+        plt.pause(0.01)
+        plt.draw()
         
     sim.Qs  = Qs
     sim.axs = axs
@@ -133,6 +134,8 @@ def update_plots(sim):
         sim.axs[2].relim()
         sim.axs[2].autoscale_view()
 
+    if sim.animate == 'Anim':
+        plt.pause(0.01)
     plt.draw()
 
     if sim.animate == 'Save':
