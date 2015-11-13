@@ -21,18 +21,19 @@ sim.flux_method = Flux.spectral_sw
 
 # Specify paramters
 sim.Lx  = 1000e3     # Domain extent (m)
-sim.Nx  = 128*4     # Grid points
+sim.Nx  = 128*2     # Grid points
 sim.Ny  = 1
 sim.Nz  = 1         # Number of layers
-sim.f0  = 2.e-4     # Coriolis
-sim.cfl = 0.2       # CFL coefficient
-sim.Hs  = [50.]     # Vector of mean layer depths
+sim.f0  = 4.e-4     # Coriolis
+sim.cfl = 0.1       # CFL coefficient
+sim.Hs  = [100.]    # Vector of mean layer depths
 sim.rho = [1025.]   # Vector of layer densities
 
 # Plotting parameters
-sim.plott = 4.*minute   # Time between plots
-sim.animate = 'Save'    # 'Save' to create video frames, 'Anim' to animate, 'None' otherwise
-sim.ylims[2] = [48,52]  # Manual ylimits on plots: ylims[0] -> u, ylims[1] -> v, ylim[2] -> h
+sim.plott = 20.*minute   # Time between plots
+sim.animate = 'Hov'    # 'Save' to create video frames, 'Anim' to animate, 'None' otherwise
+sim.ylims[2] = [-1,1]  # Manual ylimits on plots: ylims[0] -> u, ylims[1] -> v, ylim[2] -> h
+                       #    Specifies the ylimits for line plots and the climits for 2d pcolor
 
 # Output parameters
 sim.output = False      # True or False

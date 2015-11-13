@@ -49,6 +49,8 @@ class Simulation:
 
         self.geomx = 'periodic'   # x boundary condition
         self.geomy = 'periodic'   # y boundary condition
+
+        self.cmap = 'seismic'
         
         self.run_name = 'test'
 
@@ -113,7 +115,23 @@ class Simulation:
 
         # If we're going to be plotting, then initialize the plots
         if self.animate != 'None':
-            Plot_tools.initialize_plots(self)
+            if (self.animate == 'Anim') or (self.animate == 'Save'):
+                self.initialize_plots = Plot_tools.initialize_plots_animsave
+
+            elif self.animate == 'Hov':
+                if (self.Nx > 1) and (self.Ny > 1):
+                    print('Error: Cannot generate Hovmuller plot with 2D data.')
+                    sys.exit()
+                self.initialize_plots = Plot_tools.initialize_plots_hov
+                num_plot = self.end_time/self.plott+1
+                if self.Nx > 1:
+                    self.hov_h = np.zeros((self.Nx,self.Nz,num_plot))
+                    self.hov_h[:,:,0] = self.soln.h[:,0,:-1]
+                else:
+                    self.hov_h = np.zeros((self.Ny,self.Nz,num_plot))
+                    self.hov_h[:,:,0] = self.soln.h[0,:,:-1]
+            self.hov_count = 1
+            self.initialize_plots(self)
             self.next_plot_time = self.plott
 
         # If we're going to be diagnosing, initialize those
@@ -153,7 +171,7 @@ class Simulation:
         t = self.time + self.dt
 
         do_plot = False
-        if self.animate == 'Anim' or self.animate == 'Save':
+        if self.animate != 'None':
             if t + self.min_dt >= self.next_plot_time:
                 do_plot = True
 
@@ -195,7 +213,7 @@ class Simulation:
         self.time += self.dt
        
         if do_plot:
-            Plot_tools.update_plots(self)
+            self.update_plots(self)
             self.next_plot_time += self.plott
 
         if do_diag:
@@ -263,7 +281,7 @@ class Simulation:
         if self.diagnose:
             Diagnose.plot(self)
         
-        if self.animate == 'Anim':
+        if (self.animate == 'Anim') or (self.animate == 'Hov'):
             plt.ioff()
             plt.show()
 

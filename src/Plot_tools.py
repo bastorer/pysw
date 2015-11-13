@@ -18,8 +18,100 @@ def smart_time(t):
 
     return tstr
 
-# Initialize plot objects
-def initialize_plots(sim):
+# Update plot objects if animating
+def update_anim(sim):
+
+    sim.fig.suptitle(smart_time(sim.time))
+
+    if sim.Nx > 1 and sim.Ny > 1:
+        for L in range(sim.Nz):
+            sim.Qs[L].set_array(np.ravel(sim.soln.h[:sim.Nx-1,:sim.Ny-1,L].T))
+            sim.Qs[L].changed()
+    else:
+        # Update u
+        for L in range(sim.Nz):
+            sim.Qs[0][L].set_ydata(sim.soln.u[:,:,L])
+        sim.axs[0].relim()
+        sim.axs[0].autoscale_view()
+
+        # Update v
+        for L in range(sim.Nz):
+            sim.Qs[1][L].set_ydata(sim.soln.v[:,:,L])
+        sim.axs[1].relim()
+        sim.axs[1].autoscale_view()
+
+        # Update h
+        for L in range(sim.Nz):
+            sim.Qs[2][L].set_ydata(sim.soln.h[:,:,L] - np.sum(sim.Hs[L:]))
+        sim.axs[2].relim()
+        sim.axs[2].autoscale_view()
+
+    plt.pause(0.01)
+    plt.draw()
+
+# Update plot objects if saving
+def update_save(sim):
+
+    sim.fig.suptitle(smart_time(sim.time))
+
+    if sim.Nx > 1 and sim.Ny > 1:
+        for L in range(sim.Nz):
+            sim.Qs[L].set_array(np.ravel(sim.soln.h[:sim.Nx-1,:sim.Ny-1,L].T))
+            sim.Qs[L].changed()
+    else:
+        # Update u
+        for L in range(sim.Nz):
+            sim.Qs[0][L].set_ydata(sim.soln.u[:,:,L])
+        sim.axs[0].relim()
+        sim.axs[0].autoscale_view()
+
+        # Update v
+        for L in range(sim.Nz):
+            sim.Qs[1][L].set_ydata(sim.soln.v[:,:,L])
+        sim.axs[1].relim()
+        sim.axs[1].autoscale_view()
+
+        # Update h
+        for L in range(sim.Nz):
+            sim.Qs[2][L].set_ydata(sim.soln.h[:,:,L] - np.sum(sim.Hs[L:]))
+        sim.axs[2].relim()
+        sim.axs[2].autoscale_view()
+
+    plt.draw()
+
+    sim.fig.savefig('Frames/{0:05d}.png'.format(sim.frame_count))
+    sim.frame_count += 1
+
+# Update plot objects if using hov
+def update_hov(sim):
+
+    sim.fig.suptitle(smart_time(sim.time))
+    if sim.Nx > 1:
+        sim.hov_h[:,:,sim.hov_count] = sim.soln.h[:,0,:-1]
+        x = sim.x/1e3
+    else:
+        sim.hov_h[:,:,sim.hov_count] = sim.soln.h[0,:,:-1] 
+        x = sim.y/1e3
+    sim.hov_count += 1
+
+    plt.figure(sim.fig.number)
+    t = np.arange(0,sim.end_time+sim.plott,sim.plott)/86400.
+    # Update h
+    for L in range(sim.Nz):
+        plt.subplot(sim.Nz,1,L+1)
+        #sim.Qs[L].set_array(sim.hov_h[:-1,L,:-1].T.ravel() - np.sum(sim.Hs[L:]))
+        plt.pcolormesh(x,t[sim.hov_count-1:sim.hov_count+1],
+                        sim.hov_h[:,L,sim.hov_count-1:sim.hov_count+1].T - np.sum(sim.Hs[L:]),
+                        cmap=sim.cmap,
+                        vmin = sim.vmin[L], vmax = sim.vmax[L])
+
+    plt.pause(0.01)
+    plt.draw()
+
+
+
+# Initialize plot objects for anim or save
+def initialize_plots_animsave(sim):
 
     fig = plt.figure()
     sim.fig = fig
@@ -88,14 +180,19 @@ def initialize_plots(sim):
                 x = sim.x/1e3
             if sim.Ny > 1:
                 x = sim.y/1e3
-            l, = plt.plot(x,sim.soln.h[:,:,L].ravel())
+            l, = plt.plot(x,sim.soln.h[:,:,L].ravel() - np.sum(sim.Hs[L:])
+)
             if len(sim.ylims[2]) == 2:
                 plt.ylim(sim.ylims[2])
-            plt.ylabel('h')
+            plt.ylabel('eta')
             Qs[2] += [l]
 
         plt.plot(x,sim.soln.h[:,:,-1].ravel(),'k')
 
+    if sim.animate == 'Anim':
+        sim.update_plots = update_anim
+    elif sim.animate == 'Save':
+        sim.update_plots = update_save
 
     if sim.animate == 'Anim':
         plt.ion()
@@ -106,41 +203,55 @@ def initialize_plots(sim):
     sim.axs = axs
 
 
-# Update plot objects
-def update_plots(sim):
+# Initialize plot objects for hov
+def initialize_plots_hov(sim):
 
-    sim.fig.suptitle(smart_time(sim.time))
+    fig = plt.figure()
+    sim.fig = fig
+    fig.suptitle('t = 0')
 
-    if sim.Nx > 1 and sim.Ny > 1:
-        for L in range(sim.Nz):
-            sim.Qs[L].set_array(np.ravel(sim.soln.h[:sim.Nx-1,:sim.Ny-1,L].T))
-            sim.Qs[L].changed()
-    else:
-        # Update u
-        for L in range(sim.Nz):
-            sim.Qs[0][L].set_ydata(sim.soln.u[:,:,L])
-        sim.axs[0].relim()
-        sim.axs[0].autoscale_view()
+    Qs = []
 
-        # Update v
-        for L in range(sim.Nz):
-            sim.Qs[1][L].set_ydata(sim.soln.v[:,:,L])
-        sim.axs[1].relim()
-        sim.axs[1].autoscale_view()
+    # Plot h
+    t = np.arange(0,sim.end_time+sim.plott,sim.plott)/86400.
 
-        # Update h
-        for L in range(sim.Nz):
-            sim.Qs[2][L].set_ydata(sim.soln.h[:,:,L])
-        sim.axs[2].relim()
-        sim.axs[2].autoscale_view()
+    for L in range(sim.Nz):
+        plt.subplot(sim.Nz,1,L+1)
+        if sim.Nx > 1:
+            x = sim.x/1e3
+            plt.xlabel('x (km)')
+        if sim.Ny > 1:
+            x = sim.y/1e3
+            plt.xlabel('y (km)')
+        print(x.shape,t.shape,sim.hov_h.shape)
+        plt.pcolormesh(x,t,-1000*np.ones(sim.hov_h[:,L,:].T.shape),vmin = 0, vmax = 1, cmap = 'cubehelix')
+        #Q = plt.pcolormesh(x,t,sim.hov_h[:,L,:].T - np.sum(sim.Hs[L:]),cmap=sim.cmap)
+        sim.vmin = range(sim.Nz)
+        sim.vmax = range(sim.Nz)
+        if len(sim.ylims[2]) == 2:
+            sim.vmin[L] = sim.ylims[2][0]
+            sim.vmax[L] = sim.ylims[2][1]
+        else:
+            tmp = np.max(np.abs(sim.hov_h[:,L,0] - np.sum(sim.Hs[L:])))
+            sim.vmin[L] = -tmp
+            sim.vmax[L] =  tmp
+        Q = plt.pcolormesh(x,t[:2],sim.hov_h[:,L,:2].T - np.sum(sim.Hs[L:]),cmap=sim.cmap, 
+                vmin = sim.vmin[L], vmax = sim.vmax[L])
+        plt.ylim((t[0],t[-1]))
+        plt.axis('tight')
+        plt.title('eta')
+        plt.colorbar()
+        plt.ylabel('Time (days)')
+        Qs += [Q]
 
-    if sim.animate == 'Anim':
-        plt.pause(0.01)
+    sim.update_plots = update_hov
+
+    sim.Qs  = Qs
+
+    plt.ion()
+    plt.pause(0.01)
     plt.draw()
 
-    if sim.animate == 'Save':
-        sim.fig.savefig('Frames/{0:05d}.png'.format(sim.frame_count))
-        sim.frame_count += 1
 
 # Finalize
 def end_movie(sim):
