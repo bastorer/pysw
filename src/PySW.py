@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import Plot_tools
 import Diagnose
-from scipy.fftpack import fftn, ifftn, fftfreq
 import os
 import shutil
 
@@ -72,14 +71,14 @@ class Simulation:
         dxs = [1,1]
         if self.Nx > 1:
             dx = self.Lx/self.Nx
+            print('dx = ', dx)
             self.x = np.arange(dx/2,self.Lx,dx)
             dxs[0] = dx
-            print('dx = ', dx)
         if self.Ny > 1:
             dy = self.Ly/self.Ny
+            print('dy = ', dy)
             self.y = np.arange(dy/2,self.Ly,dy)
             dxs[1] = dy
-            print('dy = ', dy)
         self.dx = dxs
 
         # Initialize differentiation and averaging operators
@@ -109,7 +108,7 @@ class Simulation:
             alpha = 0.69*ks**(-1.88/np.log(km/ks))
             beta  = 1.88/np.log(km/ks)
             KX,KY = np.meshgrid(self.kx,self.ky,indexing='ij')
-            self.sfilt = np.exp(-alpha*(KX**2)**(beta/2.)-alpha*(KY**2)**(beta/2.)).reshape((self.Nx,self.Ny))
+            self.sfilt = np.exp(-alpha*(KX**2)**(beta/2.)-alpha*(KY**2)**(beta/2.)).reshape((len(self.kx),len(self.ky)))
 
     def prepare_for_run(self):
 
@@ -188,14 +187,6 @@ class Simulation:
 
         return do_plot, do_diag, do_save
 
-    # Spectral filter
-    def apply_filter(self):
-        for ii in range(self.Nz):
-            self.soln.u[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.u[:,:,ii],axes=[0,1]),axes=[0,1]).real
-            self.soln.v[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.v[:,:,ii],axes=[0,1]),axes=[0,1]).real
-            self.soln.h[:,:,ii] = ifftn(self.sfilt*fftn(self.soln.h[:,:,ii],axes=[0,1]),axes=[0,1]).real
-
-
     # Advance the simulation one time-step.
     def step(self):
         self.compute_dt()
@@ -208,7 +199,7 @@ class Simulation:
 
         # Filter if necessary
         if self.method == 'Spectral':
-            self.apply_filter()
+            self.apply_filter(self)
 
         self.time += self.dt
        
@@ -267,6 +258,7 @@ class Simulation:
                 pstr += ', del_enrg = {0:+.2g}'.format(enrg/(self.KEs[0]+self.PEs[0])-1)
                 pstr += '\n'
                 pstr += '  = {0:.3%}'.format(self.time/self.end_time)
+            print(self.dts)
             print('\n{0:s}: {1:d}'.format(self.run_name, int(self.time/self.plott)))
             print(pstr)
 
@@ -297,10 +289,6 @@ class Simulation:
         eps = 1.e-8 
         hs = self.soln.h[:,:,:self.Nz] - self.soln.h[:,:,1:]
 
-        if self.vanishing:
-            tmp = self.min_depth**self.np/(hs**(1-self.np))
-            c = np.max(np.sqrt(c**2 + self.g*tmp).ravel())
-
         if self.Nx > 1:
             if self.method == 'Spectral':
                 u = self.soln.u[:,:,:self.Nz]
@@ -321,7 +309,7 @@ class Simulation:
         else:
             dt_y = np.Inf
 
-        self.dt = max([self.cfl*min([dt_x,dt_y]),self.min_dt])
+        self.dt = max([self.cfl*np.nanmin([dt_x,dt_y]),self.min_dt])
 
     # Initialize the saving
     def initialize_saving(self):

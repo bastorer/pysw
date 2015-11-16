@@ -13,7 +13,7 @@ def ddx_period(f,ik):
 def ddx_even(f,ik):
 
     N = f.shape[0]
-    fe = np.concatenate([f,f],axis=0)
+    fe = np.concatenate([f,f[::-1,:]],axis=0)
     df = np.real(ifft(ik*fft(fe,axis=0),axis=0))
     df = df[:N,:]
     
@@ -22,7 +22,7 @@ def ddx_even(f,ik):
 def ddx_odd(f,ik):
 
     N = f.shape[0]
-    fe = np.concatenate([f,-f],axis=0)
+    fe = np.concatenate([f,-f[::-1,:]],axis=0)
     df = np.real(ifft(ik*fft(fe,axis=0),axis=0))
     df = df[:N,:]
     
@@ -36,7 +36,7 @@ def SPECTRAL_x(sim):
         kx = 2*np.pi*fftfreq(sim.Nx,d=sim.Lx/sim.Nx)
         sim.kx = kx.copy()
         sim.ik = 1j*np.tile(kx.reshape((sim.Nx,1)),(1,sim.Ny))
-    elif sim.geomx == 'walls':
+    elif sim.geomx == 'wall':
         kx = np.pi*fftfreq(2*sim.Nx,d=sim.Lx/sim.Nx)
         sim.kx = kx.copy()
         sim.ik = 1j*np.tile(kx.reshape((2*sim.Nx,1)),(1,sim.Ny))

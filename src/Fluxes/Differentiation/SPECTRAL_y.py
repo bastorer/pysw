@@ -13,7 +13,7 @@ def ddy_period(f,il):
 def ddy_even(f,il):
 
     N = f.shape[1]
-    fe = np.concatenate([f,f],axis=1)
+    fe = np.concatenate([f,f[:,::-1]],axis=1)
     df = np.real(ifft(il*fft(fe,axis=1),axis=1))
     df = df[:,:N]
     
@@ -22,7 +22,7 @@ def ddy_even(f,il):
 def ddy_odd(f,il):
 
     N = f.shape[1]
-    fe = np.concatenate([f,-f],axis=1)
+    fe = np.concatenate([f,-f[:,::-1]],axis=1)
     df = np.real(ifft(il*fft(fe,axis=1),axis=1))
     df = df[:,:N]
     
@@ -36,7 +36,7 @@ def SPECTRAL_y(sim):
         ky = 2*np.pi*fftfreq(sim.Ny,d=sim.Ly/sim.Ny)
         sim.ky = ky.copy()
         sim.il = 1j*np.tile(ky.reshape((1,sim.Ny)),(sim.Nx,1))
-    elif sim.geomy == 'walls':
+    elif sim.geomy == 'wall':
         ky = 1j*np.pi*fftfreq(2*sim.Ny,d=sim.Ly/sim.Ny)
         sim.ky = ky.copy()
         sim.il = 1j*np.tile(ky.reshape((1,2*sim.Ny)),(sim.Nx,1))

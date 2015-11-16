@@ -1,6 +1,7 @@
 import Differentiation as Diff
 import numpy as np
 import sys
+from scipy.fftpack import fftn, ifftn, fftfreq
 
 def spectral_sw_flux(sim):
 
@@ -21,8 +22,8 @@ def spectral_sw_flux(sim):
         v = sim.soln.v[:,:,ii].reshape((sim.Nx,sim.Ny))
 
         # Coriolis terms
-        sim.curr_flux.u[:,:,ii] += -sim.f0*v
-        sim.curr_flux.v[:,:,ii] +=  sim.f0*u
+        sim.curr_flux.u[:,:,ii] +=  sim.f0*v
+        sim.curr_flux.v[:,:,ii] += -sim.f0*u
 
         # x fluxes
         if sim.Nx > 1:
@@ -53,8 +54,74 @@ def spectral_sw_flux(sim):
 def spectral_sw_source(sim):
     return 
 
+def filter_periodic_periodic(sim):
+    for ii in range(sim.Nz):
+        sim.soln.u[:,:,ii] = ifftn(sim.sfilt*fftn(sim.soln.u[:,:,ii],axes=[0,1]),axes=[0,1]).real
+        sim.soln.v[:,:,ii] = ifftn(sim.sfilt*fftn(sim.soln.v[:,:,ii],axes=[0,1]),axes=[0,1]).real
+        sim.soln.h[:,:,ii] = ifftn(sim.sfilt*fftn(sim.soln.h[:,:,ii],axes=[0,1]),axes=[0,1]).real
+
+def filter_periodic_wall(sim):
+    for ii in range(sim.Nz):
+        tmp = sim.soln.u[:,:,ii]
+        tmp = np.concatenate([tmp, tmp[:,::-1]],axis=1)
+        sim.soln.u[:,:,ii] = ifftn(sim.sfilt*fftn(tmp, axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+
+        tmp = sim.soln.v[:,:,ii]
+        tmp = np.concatenate([tmp,-tmp[:,::-1]],axis=1)
+        sim.soln.v[:,:,ii] = ifftn(sim.sfilt*fftn(tmp,axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+        
+        tmp = sim.soln.h[:,:,ii]
+        tmp = np.concatenate([tmp, tmp[:,::-1]],axis=1)
+        sim.soln.h[:,:,ii] = ifftn(sim.sfilt*fftn(tmp,axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+
+def filter_wall_periodic(sim):
+    for ii in range(sim.Nz):
+        tmp = sim.soln.u[:,:,ii]
+        tmp = np.concatenate([tmp,-tmp[::-1,:]],axis=0)
+        sim.soln.u[:,:,ii] = ifftn(sim.sfilt*fftn(tmp, axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+
+        tmp = sim.soln.v[:,:,ii]
+        tmp = np.concatenate([tmp, tmp[::-1,:]],axis=0)
+        sim.soln.v[:,:,ii] = ifftn(sim.sfilt*fftn(tmp,axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+        
+        tmp = sim.soln.h[:,:,ii]
+        tmp = np.concatenate([tmp, tmp[::-1,:]],axis=0)
+        sim.soln.h[:,:,ii] = ifftn(sim.sfilt*fftn(tmp,axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+
+def filter_wall_wall(sim):
+    for ii in range(sim.Nz):
+        tmp = sim.soln.u[:,:,ii]
+        tmp = np.concatenate([np.concatenate([tmp,         -tmp[::-1,:]],axis=0), \
+                              np.concatenate([tmp[:,::-1], -tmp[::-1,::-1]],axis=0)], \
+                    axis=1)
+        sim.soln.u[:,:,ii] = ifftn(sim.sfilt*fftn(tmp, axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+
+        tmp = sim.soln.v[:,:,ii]
+        tmp = np.concatenate([np.concatenate([ tmp,          tmp[::-1,:]],axis=0), \
+                              np.concatenate([-tmp[:,::-1], -tmp[::-1,::-1]],axis=0)], \
+                    axis=1)
+        sim.soln.v[:,:,ii] = ifftn(sim.sfilt*fftn(tmp,axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+        
+        tmp = sim.soln.h[:,:,ii]
+        tmp = np.concatenate([np.concatenate([tmp,         tmp[::-1,:]],axis=0), \
+                              np.concatenate([tmp[:,::-1], tmp[::-1,::-1]],axis=0)], \
+                    axis=1)
+        sim.soln.h[:,:,ii] = ifftn(sim.sfilt*fftn(tmp,axes=[0,1]),axes=[0,1]).real[:sim.Nx,:sim.Ny]
+
+
 def spectral_sw(sim):
     sim.x_derivs = Diff.SPECTRAL_x
     sim.y_derivs = Diff.SPECTRAL_y
     sim.flux_function = spectral_sw_flux
     sim.source_function = spectral_sw_source
+    if sim.geomx == 'periodic':
+        if sim.geomy == 'periodic':
+            sim.apply_filter = filter_periodic_periodic
+        elif sim.geomy == 'wall':
+            sim.appy_filter = filter_periodic_wall
+    elif sim.geomx == 'wall':
+        if sim.geomy == 'periodic':
+            sim.apply_filter = filter_wall_periodic
+        elif sim.geomy == 'wall':
+            sim.apply_filter = filter_wall_wall
+
